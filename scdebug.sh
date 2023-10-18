@@ -24,9 +24,9 @@ TEXT_RESET=$(tput sgr0)		# Texto por defecto
 PROGNAME=$0					# Antes de nada guardo el argumento 0 en una constante
 
 # VARIABLES
-stoOption=
+stoString=
 vallOption=0
-nattch=0
+attachVector=()
 prog=()
 
 #------------------------------------------------------------------------------
@@ -50,9 +50,11 @@ while [ "$1" != "" ]; do
             exit 1
             ;;
         -sto )
+            # sto no se pasa a strace, solo lo que viene después, no hace falta
+            # guardarlo
             echo "Opcion -sto"
             shift
-            stoOption[0]=$1
+            stoString=$1
             ;;
 
         -v | -vall )
@@ -61,6 +63,11 @@ while [ "$1" != "" ]; do
             ;;
         -nattch )
             echo "Opcion -nattch"
+            # La opcion -nattch llama al argumento -p de strace, por eso 
+            # ocupará la primera posicion en el vector, que deja de ser vacio
+            attachVector[0]="-p"
+            # Se obtendrá el id del proceso + reciente más tarde
+            shift
             ;;
         * )
             echo "Opcion prog"
@@ -77,7 +84,7 @@ progToTest=${prog[0]}
 
 # Varios if para no anidar bucles
 # Condicional para que si prog no existe se acabe el programa
-strace ${prog[0]} > /dev/null 2>&1
+strace $progToTest > /dev/null 2>&1
 if [[ $? -ne 0 ]]; then
     error_exit "${prog[*]} no es un programa válido" 2
 fi
@@ -95,10 +102,12 @@ fi
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
 
-echo "$filename"
-echo "$route"
-echo ${progToTest[@]}
-strace $stoOption -o $route ${progToTest[@]}
+attachVector[1]=$(pgrep -u ${USER} -n) # pid del programa más reciente lanzado por user
+
+
+# stoString y attachVector pueden estar vacios ya que almacena un simbolo vacio
+# y a la hora de pasarselo a un comando lo tomará como un espacio.
+strace ${stoString} ${attachVector[@]} -o ${route} ${progToTest[@]} 
 
 #ps -u $USER -o pid,command --sort=-start_time | grep -v "ps -u" | head -n 2 | tail -n 1 | tr -s ' ' | cut -d ' ' -f2
 
