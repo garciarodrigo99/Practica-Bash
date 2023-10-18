@@ -80,7 +80,8 @@ while [ "$1" != "" ]; do
     esac
 done
 
-progToTest=${prog[0]}
+# Guardar el nombre del programa a seguir sin argumentos
+progToTest=${prog[0]}   
 
 # Varios if para no anidar bucles
 # Condicional para que si prog no existe se acabe el programa
@@ -102,12 +103,12 @@ fi
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
 
-attachVector[1]=$(pgrep -u ${USER} -n) # pid del programa más reciente lanzado por user
-
+attachVector[1]=$(pgrep -u ${USER} -n ${progToTest})    # -u: usuario 
+                                                        # -n: FLAG + reciente
 
 # stoString y attachVector pueden estar vacios ya que almacena un simbolo vacio
 # y a la hora de pasarselo a un comando lo tomará como un espacio.
-strace ${stoString} ${attachVector[@]} -o ${route} ${progToTest[@]} 
+strace ${stoString} ${attachVector[@]} -o ${route} ${prog[@]} 
 
 #ps -u $USER -o pid,command --sort=-start_time | grep -v "ps -u" | head -n 2 | tail -n 1 | tr -s ' ' | cut -d ' ' -f2
 
