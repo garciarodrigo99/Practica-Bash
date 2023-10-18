@@ -24,7 +24,7 @@ TEXT_RESET=$(tput sgr0)		# Texto por defecto
 PROGNAME=$0					# Antes de nada guardo el argumento 0 en una constante
 
 # VARIABLES
-stoOption=0
+stoOption=
 vallOption=0
 nattch=0
 prog=()
@@ -51,6 +51,8 @@ while [ "$1" != "" ]; do
             ;;
         -sto )
             echo "Opcion -sto"
+            shift
+            stoOption[0]=$1
             ;;
 
         -v | -vall )
@@ -96,7 +98,7 @@ route=${HOME}/.scdebug/${prog[0]}/${filename}
 echo "$filename"
 echo "$route"
 echo ${progToTest[@]}
-strace -o $route ${progToTest[@]}
+strace $stoOption -o $route ${progToTest[@]}
 
 #ps -u $USER -o pid,command --sort=-start_time | grep -v "ps -u" | head -n 2 | tail -n 1 | tr -s ' ' | cut -d ' ' -f2
 
