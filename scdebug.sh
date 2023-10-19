@@ -46,21 +46,31 @@ error_exit()
         exit $lastValue
 }
 
-# Condicional para que si prog no existe se acabe el programa
-checkProgram()
+checkProgramEntry()
 {
+    # Condicional para que si prog no existe se acabe el programa
     strace $progToTest > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
         error_exit "${progToTest} no es un programa válido" 2
     fi
-}
 
-# Comprobar argumentos correctos para programa a seguir
-checkProgramArguments()
-{
+    # Comprobar argumentos correctos para programa a seguir
     strace ${prog[@]} > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
         error_exit "${prog[*]}: argumentos inválidos para ${progToTest}" 3
+    fi
+}
+
+createFolders()
+{
+    # Crear directorio .scdebug
+    if [[ ! -e "${HOME}/.scdebug" ]]; then
+    mkdir "${HOME}/.scdebug"
+    fi
+
+    # Crear directorio con el nombre del programa
+    if [[ ! -e "${HOME}/.scdebug/${progToTest}" ]]; then
+    mkdir ${HOME}/.scdebug/${progToTest}
     fi
 }
 
@@ -69,7 +79,7 @@ usage()
 	echo
 	echo "Modo de uso: $0 [-sto arg]  [-v | -vall] [-nattch progtoattach] prog [arg1...]
 
-    Para más información: $0 (-h | --help)"
+Para más información: $0 (-h | --help)"
 }
 
 help()
@@ -143,19 +153,9 @@ progToTest=${prog[0]}
 
 # # Varios if para no anidar bucles
 
-checkProgram
+checkProgramEntry
 
-checkProgramArguments
-
-# # Crear directorio .scdebug
-if [[ ! -e "${HOME}/.scdebug" ]]; then
-   mkdir "${HOME}/.scdebug"
-fi
-
-# Crear directorio con el nombre del programa
-if [[ ! -e "${HOME}/.scdebug/${progToTest}" ]]; then
-   mkdir ${HOME}/.scdebug/${progToTest}
-fi
+createFolders
 
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
