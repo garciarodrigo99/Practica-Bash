@@ -11,6 +11,7 @@
 
 # exit 1: Caso general
 # exit 2: Prog no es un programa válido
+# exit 3: Los argumentos de prog no son válidos
 
 ### Estilos
 
@@ -37,7 +38,40 @@ error_exit()
 {
         lastValue="${!#}"
         echo "${PROGNAME}: Error: ${1:-"Error desconocido"}" 1>&2
+        usage
         exit $lastValue
+}
+
+usage()
+{
+	echo
+	echo "Modo de uso: $0 [-sto arg]  [-v | -vall] [-nattch progtoattach] prog [arg1...]
+Para más información: $0 (-h | --help)"
+}
+
+help()
+{
+cat << _EOF_
+
+${TEXT_ULINE}Modo de uso${TEXT_RESET}: $0 [-sto arg]  [-v | -vall] [-nattch progtoattach] prog [arg1...]
+
+Las opciones referidas a ${PROGNAME} deberán ir antes de indicar el nombre del programa que se quiere analizar.
+En el caso de que indiquen después, se tomarán argumentos del programa a analizar.
+
+${TEXT_BOLD}OPCIONES:${TEXT_RESET}
+
+-sto        Añade opciones al comando strace. Los argumentos han 
+            de ir entre comillas simples 'arg1 arg2 ... argn'. En caso de que 
+            no sea así se tomará como opción del programa ${PROGNAME}.
+-v, -vall   No implementada todavía
+-nattch		Monitorizar otros procesos que ya están en ejecución. Se opta por 
+            el proceso del usuario cuya ejecución se inició más recientemente 
+            con ese comando.
+prog        Programa a evaluar. [arg1...] argumentos cuando se llama al programa.
+
+
+_EOF_
+
 }
 
 ### Main
@@ -46,7 +80,7 @@ error_exit()
 while [ "$1" != "" ]; do
 	case $1 in
         -h | --help )
-            echo help
+            help
             exit 1
             ;;
         -sto )
@@ -87,7 +121,13 @@ progToTest=${prog[0]}
 # Condicional para que si prog no existe se acabe el programa
 strace $progToTest > /dev/null 2>&1
 if [[ $? -ne 0 ]]; then
-    error_exit "${prog[*]} no es un programa válido" 2
+    error_exit "${progToTest} no es un programa válido" 2
+fi
+
+# Comprobar argumentos correctos para programa a seguir
+strace ${prog[@]} > /dev/null 2>&1
+if [[ $? -ne 0 ]]; then
+    error_exit "${prog[@]} no son argumentos válidos para ${progToTest}" 3
 fi
 
 # # Crear directorio .scdebug
@@ -110,12 +150,8 @@ attachVector[1]=$(pgrep -u ${USER} -n ${progToTest})    # -u: usuario
 # y a la hora de pasarselo a un comando lo tomará como un espacio.
 strace ${stoString} ${attachVector[@]} -o ${route} ${prog[@]} 
 
-#ps -u $USER -o pid,command --sort=-start_time | grep -v "ps -u" | head -n 2 | tail -n 1 | tr -s ' ' | cut -d ' ' -f2
-
 # Preguntar(¿?)
 # En el caso de que en cualquier ejecución del script que requiera la monitorización de procesos,
 # un lanzamiento de strace produzca un error el script debe terminar con un error indicado
 # también por un mensaje en la salida de error. Este error también deberá quedar reflejado en el
 # archivo de salida.
-
-# echo "${prog[@]}"
