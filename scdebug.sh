@@ -29,6 +29,7 @@ stoString=
 vallOption=0
 attachVector=()
 prog=()
+progToTest=
 
 #------------------------------------------------------------------------------
 ### PROGRAMA
@@ -36,17 +37,39 @@ prog=()
 ### Funciones 
 error_exit()
 {
-        lastValue="${!#}"
+
+        lastValue="${!#}"   # Guarda el último argumento pasado por parámetro
         echo "${PROGNAME}: Error: ${1:-"Error desconocido"}" 1>&2
         usage
+        echo 
+        echo "Saliendo con ${lastValue}"
         exit $lastValue
+}
+
+# Condicional para que si prog no existe se acabe el programa
+checkProgram()
+{
+    strace $progToTest > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        error_exit "${progToTest} no es un programa válido" 2
+    fi
+}
+
+# Comprobar argumentos correctos para programa a seguir
+checkProgramArguments()
+{
+    strace ${prog[@]} > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        error_exit "${prog[*]}: argumentos inválidos para ${progToTest}" 3
+    fi
 }
 
 usage()
 {
 	echo
 	echo "Modo de uso: $0 [-sto arg]  [-v | -vall] [-nattch progtoattach] prog [arg1...]
-Para más información: $0 (-h | --help)"
+
+    Para más información: $0 (-h | --help)"
 }
 
 help()
@@ -106,7 +129,8 @@ while [ "$1" != "" ]; do
         * )
             echo "Opcion prog"
             # Añadir los argumentos al vector prog
-            while [ "$1" != "" ] && [[ "$1" != "-"* ]]; do
+            #while [ "$1" != "" ] && [[ "$1" != "-"* ]]; do
+            while [ "$1" != "" ]; do
                 prog+=("$1")
                 shift
             done
@@ -117,18 +141,11 @@ done
 # Guardar el nombre del programa a seguir sin argumentos
 progToTest=${prog[0]}   
 
-# Varios if para no anidar bucles
-# Condicional para que si prog no existe se acabe el programa
-strace $progToTest > /dev/null 2>&1
-if [[ $? -ne 0 ]]; then
-    error_exit "${progToTest} no es un programa válido" 2
-fi
+# # Varios if para no anidar bucles
 
-# Comprobar argumentos correctos para programa a seguir
-strace ${prog[@]} > /dev/null 2>&1
-if [[ $? -ne 0 ]]; then
-    error_exit "${prog[@]} no son argumentos válidos para ${progToTest}" 3
-fi
+checkProgram
+
+checkProgramArguments
 
 # # Crear directorio .scdebug
 if [[ ! -e "${HOME}/.scdebug" ]]; then
@@ -143,12 +160,18 @@ fi
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
 
-attachVector[1]=$(pgrep -u ${USER} -n ${progToTest})    # -u: usuario 
-                                                        # -n: FLAG + reciente
+# Si no hago esta línea puede que salte un error de que no hay ningun proceso
+# anterior ejecutandose
+if [[ ${attachVector[1]} == "-p" ]]; then
+    attachVector[1]=$(pgrep -u ${USER} -n ${progToTest})    # -u: usuario 
+                                                            # -n: FLAG + reciente
+fi
 
+aux="${stoString} ${attachVector[@]} -o ${route} ${prog[@]} : ejecutado"
+echo $aux
 # stoString y attachVector pueden estar vacios ya que almacena un simbolo vacio
 # y a la hora de pasarselo a un comando lo tomará como un espacio.
-strace ${stoString} ${attachVector[@]} -o ${route} ${prog[@]} 
+strace ${stoString} ${attachVector[@]} -o ${route} ${prog[@]}
 
 # Preguntar(¿?)
 # En el caso de que en cualquier ejecución del script que requiera la monitorización de procesos,
