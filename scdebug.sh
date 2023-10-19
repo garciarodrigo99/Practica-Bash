@@ -23,6 +23,9 @@ TEXT_RESET=$(tput sgr0)		# Texto por defecto
 ### CONSTANTES
 
 PROGNAME=$0					# Antes de nada guardo el argumento 0 en una constante
+INVALID_OPTION=2            # Argumento a PROGNAME no válido
+INVALID_PROGRAM=3           # El programa no existe
+INVALID_PROGRAM_OPTION=4    # Las opciones del programa a seguir no son válidas
 
 # VARIABLES
 stoString=
@@ -51,13 +54,13 @@ checkProgramEntry()
     # Condicional para que si prog no existe se acabe el programa
     strace $progToTest > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
-        error_exit "${progToTest} no es un programa válido" 2
+        error_exit "${progToTest} no es un programa válido" ${INVALID_PROGRAM}
     fi
 
     # Comprobar argumentos correctos para programa a seguir
     strace ${prog[@]} > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
-        error_exit "${prog[*]}: argumentos inválidos para ${progToTest}" 3
+        error_exit "${prog[*]}: argumentos inválidos para ${progToTest}" ${INVALID_PROGRAM_OPTION}
     fi
 }
 
@@ -136,6 +139,9 @@ while [ "$1" != "" ]; do
             # Se obtendrá el id del proceso + reciente más tarde
             shift
             ;;
+        -* )
+            error_exit "$1 no es una opción válida de ${PROGNAME}" ${INVALID_OPTION}
+            ;;
         * )
             echo "Opcion prog"
             # Añadir los argumentos al vector prog
@@ -162,7 +168,8 @@ route=${HOME}/.scdebug/${prog[0]}/${filename}
 
 # Si no hago esta línea puede que salte un error de que no hay ningun proceso
 # anterior ejecutandose
-if [[ ${attachVector[1]} == "-p" ]]; then
+if [[ ${attachVector[0]} == "-p" ]]; then
+    echo "Checking newest process"
     attachVector[1]=$(pgrep -u ${USER} -n ${progToTest})    # -u: usuario 
                                                             # -n: FLAG + reciente
 fi
