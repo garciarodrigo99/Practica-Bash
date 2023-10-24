@@ -13,26 +13,32 @@
 # exit 2: Prog no es un programa válido
 # exit 3: Los argumentos de prog no son válidos
 
-### Estilos
+## Estilos
 
 TEXT_BOLD=$(tput bold)		# Texto negrita
 TEXT_ULINE=$(tput sgr 0 1)	# Texto subrayado
 TEXT_GREEN=$(tput setaf 2)	# Texto en verde
 TEXT_RESET=$(tput sgr0)		# Texto por defecto
 
-### CONSTANTES
+## CONSTANTES
 
 PROGNAME=$0					# Antes de nada guardo el argumento 0 en una constante
+
+### ERRORES
+
 INVALID_OPTION=2            # Argumento a PROGNAME no válido
 INVALID_PROGRAM=3           # El programa no existe
 INVALID_PROGRAM_OPTION=4    # Las opciones del programa a seguir no son válidas
 
-# VARIABLES
-stoString=
-vallOption=0
-attachVector=()
+### OPCIONES 
+PROGRAM_OPTIONS=("-h" "-k" "-v" "-sto" "-vall" "-nattch" "-pattch")
+
+## VARIABLES
+sto_option=
+v_option=0
+n_attach_vector=()
+p_attach_vector=()
 prog=()
-progToTest=
 
 #------------------------------------------------------------------------------
 ### PROGRAMA
@@ -49,19 +55,45 @@ error_exit()
         exit $lastValue
 }
 
-checkProgramEntry()
-{
-    # Condicional para que si prog no existe se acabe el programa
-    strace $progToTest > /dev/null 2>&1
-    if [[ $? -ne 0 ]]; then
-        error_exit "${progToTest} no es un programa válido" ${INVALID_PROGRAM}
-    fi
+is_option(){
 
-    # Comprobar argumentos correctos para programa a seguir
-    strace ${prog[@]} > /dev/null 2>&1
-    if [[ $? -ne 0 ]]; then
-        error_exit "${prog[*]}: argumentos inválidos para ${progToTest}" ${INVALID_PROGRAM_OPTION}
+    #echo "Llamada is_option con argumento "$1""
+    for elemento in "${PROGRAM_OPTIONS[@]}"; do
+        if [ "$elemento" == "$1" ]; then
+            return 0  # Retorna 0 para indicar éxito (cadena encontrada)
+        fi
+    done
+
+    return 1  # Retorna 1 para indicar que la cadena no fue encontrada
+
+}
+
+# Cambia el nombre de los programas por su proceso más reciente
+fill_n_attch(){
+    if [ "${n_attach_vector[0]}" == "" ];then
+        return 1
     fi
+    programas=("$@")  # Obtener los nombres de los programas como argumento
+    longitud=${#programas[@]}
+
+    for ((i = 1; i < longitud; i++)); do
+        nombre_programa="${programas[i]}"
+        pid=$(pgrep -o "$nombre_programa")
+
+        if [ -n "$pid" ]; then
+            programas[i]=$pid
+        else
+            programas[i]="-1"  # Valor predeterminado si el programa no está en ejecución
+        fi
+    }
+
+    # Devolver el vector actualizado
+    echo "${programas[@]}"
+}
+
+# Cambia el nombre de los programas por su proceso más reciente
+fill_p_attch(){
+
 }
 
 createFolders()
@@ -72,10 +104,22 @@ createFolders()
     fi
 
     # Crear directorio con el nombre del programa
-    if [[ ! -e "${HOME}/.scdebug/${progToTest}" ]]; then
-    mkdir ${HOME}/.scdebug/${progToTest}
+    if [ ${prog[0]} != "" ]; then
+        if [[ ! -e "${HOME}/.scdebug/${prog[0]}" ]]; then
+            mkdir ${HOME}/.scdebug/${prog[0]}
+        fi
+    fi
+
+    # Crear directorio con el nombre del programa -nattch
+    if [ ${n_attach_vector[0]} != "" ]; then
+        if [[ ! -e "${HOME}/.scdebug/${n_attach_vector[0]}" ]]; then
+            mkdir ${HOME}/.scdebug/${n_attach_vector[0]}
+        fi
     fi
 }
+
+
+
 
 usage()
 {
@@ -87,6 +131,7 @@ Para más información: $0 (-h | --help)"
 
 help()
 {
+
 cat << _EOF_
 
 ${TEXT_ULINE}Modo de uso${TEXT_RESET}: $0 [-sto arg]  [-v | -vall] [-nattch progtoattach] prog [arg1...]
@@ -99,10 +144,12 @@ ${TEXT_BOLD}OPCIONES:${TEXT_RESET}
 -sto        Añade opciones al comando strace. Los argumentos han 
             de ir entre comillas simples 'arg1 arg2 ... argn'. En caso de que 
             no sea así se tomará como opción del programa ${PROGNAME}.
--v, -vall   No implementada todavía
+-k          Opcion no implementada.
+-v, -vall   Opcion no implementada.
 -nattch		Monitorizar otros procesos que ya están en ejecución. Se opta por 
             el proceso del usuario cuya ejecución se inició más recientemente 
             con ese comando.
+-pattch		Monitorizar otros procesos. Se pasan los números de los procesos.
 prog        Programa a evaluar. [arg1...] argumentos cuando se llama al programa.
 
 
@@ -124,20 +171,46 @@ while [ "$1" != "" ]; do
             # guardarlo
             echo "Opcion -sto"
             shift
-            stoString=$1
+            sto_option=$1
             ;;
 
         -v | -vall )
-            echo "Opcion -vall"
+            echo "Opcion -v(all)"
+            v_option="$1"
             shift
             ;;
         -nattch )
             echo "Opcion -nattch"
             # La opcion -nattch llama al argumento -p de strace, por eso 
             # ocupará la primera posicion en el vector, que deja de ser vacio
-            attachVector[0]="-p"
+            n_attach_vector[0]="-p"
             # Se obtendrá el id del proceso + reciente más tarde
             shift
+            while [ "$1" != "" ]; do
+                is_option "$1"
+                if [ "$?" == "0" ];then
+                    break
+                fi
+                n_attach_vector+=("$1")
+                shift
+            done
+            ;;
+        -pattch )
+            echo "Opcion -pattch"
+            # La opcion -nattch llama al argumento -p de strace, por eso 
+            # ocupará la primera posicion en el vector, que deja de ser vacio
+            p_attach_vector[0]="-p"
+            # Se obtendrá el id del proceso + reciente más tarde
+            shift
+            while [ "$1" != "" ]; do
+                is_option "$1"
+                if [ "$?" == "0" ];then
+                    break
+                fi
+                p_attach_vector+=("$1")
+                shift
+            done
+            # if [ "${p_attach_vector[1]}" == "" ]
             ;;
         -* )
             error_exit "$1 no es una opción válida de ${PROGNAME}" ${INVALID_OPTION}
@@ -145,21 +218,19 @@ while [ "$1" != "" ]; do
         * )
             echo "Opcion prog"
             # Añadir los argumentos al vector prog
-            #while [ "$1" != "" ] && [[ "$1" != "-"* ]]; do
             while [ "$1" != "" ]; do
+                is_option "$1"
+                if [ "$?" == "0" ];then
+                    break
+                fi
                 prog+=("$1")
                 shift
             done
             ;;
     esac
-done
-
-# Guardar el nombre del programa a seguir sin argumentos
-progToTest=${prog[0]}   
+done   
 
 # # Varios if para no anidar bucles
-
-checkProgramEntry
 
 createFolders
 
@@ -168,20 +239,25 @@ route=${HOME}/.scdebug/${prog[0]}/${filename}
 
 # Si no hago esta línea puede que salte un error de que no hay ningun proceso
 # anterior ejecutandose
-if [[ ${attachVector[0]} == "-p" ]]; then
+if [[ ${n_attach_vector[0]} == "-p" ]]; then
     echo "Checking newest process"
-    attachVector[1]=$(pgrep -u ${USER} -n ${progToTest})    # -u: usuario 
+    n_attach_vector[1]=$(pgrep -u ${USER} -n ${progToTest})    # -u: usuario 
                                                             # -n: FLAG + reciente
 fi
 
-aux="${stoString} ${attachVector[@]} -o ${route} ${prog[@]} : ejecutado"
+aux="${sto_option} ${n_attach_vector[@]} -o ${route} ${prog[@]} : ejecutado"
 echo $aux
-# stoString y attachVector pueden estar vacios ya que almacena un simbolo vacio
+# sto_option y attachVector pueden estar vacios ya que almacena un simbolo vacio
 # y a la hora de pasarselo a un comando lo tomará como un espacio.
-strace ${stoString} ${attachVector[@]} -o ${route} ${prog[@]}
+strace ${sto_option} ${n_attach_vector[@]} -o ${route} ${prog[@]}
 
 # Preguntar(¿?)
-# En el caso de que en cualquier ejecución del script que requiera la monitorización de procesos,
-# un lanzamiento de strace produzca un error el script debe terminar con un error indicado
-# también por un mensaje en la salida de error. Este error también deberá quedar reflejado en el
-# archivo de salida.
+# 1. ¿Con la opcion prog solo se puede ejecutar un programa con sus respectivos argumentos
+#    o son varios programas?
+# 2. ¿Con la opción -nattch serían válidos los argumentos ls -la, o es solo el nombre del programa?
+# 3. Si con las opciones -(n | p)attch se introducen programas que no tienen procesos en ejecución,
+# ¿qué pasa?
+# 4. Si después de las opciones -(n | p)attch no se introduce ningún programa, ¿se lanza error o
+# simplemente no pasa o se dejan los errores a bash?
+
+#ps x --noheaders pid,comm
