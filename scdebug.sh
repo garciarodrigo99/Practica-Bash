@@ -87,12 +87,31 @@ fill_n_attach() {
     done
 
     # No es necesario devolver el vector actualizado ya que n_attach_vector es una variable global
-    echo "Procesos más recientes: ${n_attach_vector[*]}"
+    echo "Procesos N más recientes: ${n_attach_vector[*]}"
 }
 
 # Cambia el numero de proceso por el nombre de su comando
 fill_p_attch(){
     echo "Funcion fill_p_attch"
+    echo "fill_p_attch: ${p_attach_vector[*]}"
+    if [ "${p_attach_vector[0]}" == "" ]; then
+        return 1
+    fi
+
+    for ((i = 1; i < ${#p_attach_vector[@]}; i++)); do
+        numero_programa="${p_attach_vector[i]}"
+        # ps -p 14574 -o comm=
+        pid=$(ps -p ${numero_programa} -o comm=)
+
+        if [ -n "$pid" ]; then
+            p_attach_vector[i]=$pid
+        else
+            p_attach_vector[i]=""       # Valor predeterminado si el programa no está en ejecución
+        fi
+    done
+
+    # No es necesario devolver el vector actualizado ya que n_attach_vector es una variable global
+    echo "Procesos P más recientes: ${p_attach_vector[*]}"
 }
 
 createFolders()
@@ -232,7 +251,10 @@ done
 
 # # Varios if para no anidar bucles
 
+echo ""
+
 fill_n_attach
+fill_p_attch
 exit 1
 
 createFolders
