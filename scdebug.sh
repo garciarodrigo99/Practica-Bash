@@ -69,31 +69,30 @@ is_option(){
 }
 
 # Cambia el nombre de los programas por su proceso más reciente
-fill_n_attch(){
-    if [ "${n_attach_vector[0]}" == "" ];then
+fill_n_attach() {
+    if [ "${n_attach_vector[0]}" == "" ]; then
         return 1
     fi
-    programas=("$@")  # Obtener los nombres de los programas como argumento
-    longitud=${#programas[@]}
 
-    for ((i = 1; i < longitud; i++)); do
-        nombre_programa="${programas[i]}"
-        pid=$(pgrep -o "$nombre_programa")
+    for ((i = 1; i < ${#n_attach_vector[@]}; i++)); do
+        nombre_programa="${n_attach_vector[i]}"
+        pid=$(pgrep -u ${USER} -n ${nombre_programa})    # -u: usuario 
+                                                    # -n: FLAG + reciente
 
         if [ -n "$pid" ]; then
-            programas[i]=$pid
+            n_attach_vector[i]=$pid
         else
-            programas[i]="-1"  # Valor predeterminado si el programa no está en ejecución
+            n_attach_vector[i]=""       # Valor predeterminado si el programa no está en ejecución
         fi
-    }
+    done
 
-    # Devolver el vector actualizado
-    echo "${programas[@]}"
+    # No es necesario devolver el vector actualizado ya que n_attach_vector es una variable global
+    echo "Procesos más recientes: ${n_attach_vector[*]}"
 }
 
-# Cambia el nombre de los programas por su proceso más reciente
+# Cambia el numero de proceso por el nombre de su comando
 fill_p_attch(){
-
+    echo "Funcion fill_p_attch"
 }
 
 createFolders()
@@ -104,14 +103,14 @@ createFolders()
     fi
 
     # Crear directorio con el nombre del programa
-    if [ ${prog[0]} != "" ]; then
+    if [ -n "${prog[0]}" ]; then
         if [[ ! -e "${HOME}/.scdebug/${prog[0]}" ]]; then
             mkdir ${HOME}/.scdebug/${prog[0]}
         fi
     fi
 
     # Crear directorio con el nombre del programa -nattch
-    if [ ${n_attach_vector[0]} != "" ]; then
+    if [ - "${n_attach_vector[0]}" ]; then
         if [[ ! -e "${HOME}/.scdebug/${n_attach_vector[0]}" ]]; then
             mkdir ${HOME}/.scdebug/${n_attach_vector[0]}
         fi
@@ -211,6 +210,7 @@ while [ "$1" != "" ]; do
                 shift
             done
             # if [ "${p_attach_vector[1]}" == "" ]
+            # ps -p 14574 -o comm=
             ;;
         -* )
             error_exit "$1 no es una opción válida de ${PROGNAME}" ${INVALID_OPTION}
@@ -232,18 +232,13 @@ done
 
 # # Varios if para no anidar bucles
 
+fill_n_attach
+exit 1
+
 createFolders
 
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
-
-# Si no hago esta línea puede que salte un error de que no hay ningun proceso
-# anterior ejecutandose
-if [[ ${n_attach_vector[0]} == "-p" ]]; then
-    echo "Checking newest process"
-    n_attach_vector[1]=$(pgrep -u ${USER} -n ${progToTest})    # -u: usuario 
-                                                            # -n: FLAG + reciente
-fi
 
 aux="${sto_option} ${n_attach_vector[@]} -o ${route} ${prog[@]} : ejecutado"
 echo $aux
