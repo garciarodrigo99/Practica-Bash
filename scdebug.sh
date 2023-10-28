@@ -77,21 +77,38 @@ consult ()
             continue
         fi
         # Si el directorio no existe salto a la siguiente iteración
-        if [[ ! -e "${HOME}/.scdebug/${v_option[i]}/" ]]; then
+        folder="${HOME}/.scdebug/${v_option[i]}/"
+        if [[ ! -e "$folder" ]]; then
             continue
         fi
+        # Nombre de comanda
         command="${v_option[i]}"
-        output=$(ls -ltR --time-style=long-iso | tail -n +3)
-        if [ "${v_option[0]}" == "-v" ]; then
-            output=$(echo "$output" | head -n1)
-            local_file_name=$(echo "$output" | cut -d' ' -f8)
-            file_time=$(echo "$output" | cut -d' ' -f6,7)
+        # (Solo) programas ordenados mod más reciente
+        output="ls -lt --time-style=long-iso "$folder""
+
+        # Volcar las filas de la salida por pantalla al vector rows
+        rows=()
+        while IFS= read -r linea; do
+            rows+=("$linea")
+            # Verificar si option es igual a -v y salir después de la primera línea
+            if [ "${v_option[0]}" == "-v"  ]; then
+                break
+            fi
+        done < <($output)
+
+        # Eliminar la primera posición del vector
+        rows=("${rows[@]:1}")
+
+        # Recorrer vector el vector de filas
+        for linea in "${rows[@]}"; do
+            #echo $linea
+            local_file_name=$(echo "$linea" | cut -d' ' -f8)
+            file_time=$(echo "$linea" | cut -d' ' -f6,7)
             echo "=============== COMMAND: "$command" ======================="
             echo "=============== TRACE FILE: "$local_file_name" ================="
             echo "=============== TIME: "$file_time" =============="
-        else 
-            echo "-vall"
-        fi
+            echo
+        done
 
     done
 }
