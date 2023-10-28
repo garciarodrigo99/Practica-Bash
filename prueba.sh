@@ -1,23 +1,17 @@
-# strace pene > /dev/null 2>&1
-# if [[ $? -eq 0 ]]; then
-#     #error_exit "${prog[0]} no es un archivo o directorio existente" 2
-#     echo exito
-# else 
-#     echo error
-# fi
+#!/bin/bash
 
+pids=()
+while IFS= read -r linea; do
+    pids+=("$linea")
+done < <(ps -u"${USER}" --no-headers | tr -s ' ' | cut -d ' ' -f2)
 
+#echo "${pids[*]}"
 
-# ejemplo(){
-#     ls $1
-#     echo $2
-# }
-
-# ejemplo '-la' 2
-
-
-
-# vect1=("1" "2" "3" "4")
-# vect2=("5" "6" "7" "8")
-
-# echo "Vector 1: ${vect1[*]},vector 2: ${vect2[*]}"
+for pid in "${pids[@]}"; do
+    if [ -d "/proc/$pid" ]; then
+        #pid_info=$(cat "/proc/$pid/status")
+        # Realizar otras operaciones con pid_info si es necesario
+        cat /proc/$pid/status | grep 'TracerPid'
+    fi
+    #$pid_info $(| grep TracerPid)
+done
