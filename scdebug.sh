@@ -35,7 +35,7 @@ PROGRAM_OPTIONS=("-h" "-k" "-v" "-sto" "-vall" "-nattch" "-pattch")
 
 ## VARIABLES
 sto_option=
-v_option=0
+v_option=()
 n_attach_vector=()
 p_attach_vector=()
 prog=()
@@ -55,8 +55,8 @@ error_exit()
         exit $lastValue
 }
 
-is_option(){
-
+is_option()
+{
     #echo "Llamada is_option con argumento "$1""
     for elemento in "${PROGRAM_OPTIONS[@]}"; do
         if [ "$elemento" == "$1" ]; then
@@ -68,8 +68,37 @@ is_option(){
 
 }
 
+consult ()
+{
+
+    for ((i = 1; i < ${#v_option[@]}; i++)); do
+        # Si es la primera posicion del vector es vacia salto a la siguiente iteración
+        if [ -z "${v_option[i]}" ]; then
+            continue
+        fi
+        # Si el directorio no existe salto a la siguiente iteración
+        if [[ ! -e "${HOME}/.scdebug/${v_option[i]}/" ]]; then
+            continue
+        fi
+        command="${v_option[i]}"
+        output=$(ls -ltR --time-style=long-iso | tail -n +3)
+        if [ "${v_option[0]}" == "-v" ]; then
+            output=$(echo "$output" | head -n1)
+            local_file_name=$(echo "$output" | cut -d' ' -f8)
+            file_time=$(echo "$output" | cut -d' ' -f6,7)
+            echo "=============== COMMAND: "$command" ======================="
+            echo "=============== TRACE FILE: "$local_file_name" ================="
+            echo "=============== TIME: "$file_time" =============="
+        else 
+            echo "-vall"
+        fi
+
+    done
+}
+
 # Cambia el nombre de los programas por su proceso más reciente
-fill_n_attach() {
+fill_n_attach() 
+{
     if [ "${n_attach_vector[0]}" == "" ]; then
         return 1
     fi
@@ -91,9 +120,8 @@ fill_n_attach() {
 }
 
 # Cambia el numero de proceso por el nombre de su comando
-fill_p_attch(){
-    echo "Funcion fill_p_attch"
-    echo "fill_p_attch: ${p_attach_vector[*]}"
+fill_p_attch()
+{
     if [ "${p_attach_vector[0]}" == "" ]; then
         return 1
     fi
@@ -129,15 +157,12 @@ createFolders()
     fi
 
     # Crear directorio con el nombre del programa -nattch
-    if [ - "${n_attach_vector[0]}" ]; then
+    if [ -n "${n_attach_vector[0]}" ]; then
         if [[ ! -e "${HOME}/.scdebug/${n_attach_vector[0]}" ]]; then
             mkdir ${HOME}/.scdebug/${n_attach_vector[0]}
         fi
     fi
 }
-
-
-
 
 usage()
 {
@@ -194,8 +219,19 @@ while [ "$1" != "" ]; do
 
         -v | -vall )
             echo "Opcion -v(all)"
-            v_option="$1"
+            v_option[0]="$1"
             shift
+            while [ "$1" != "" ]; do
+                is_option "$1"
+                if [ "$?" == "0" ];then
+                    break
+                fi
+                v_option+=("$1")
+                shift
+            done
+            consult
+            exit 0
+            # No lanzar operaciones strace
             ;;
         -nattch )
             echo "Opcion -nattch"
@@ -251,11 +287,8 @@ done
 
 # # Varios if para no anidar bucles
 
-echo ""
-
 fill_n_attach
 fill_p_attch
-exit 1
 
 createFolders
 
