@@ -224,25 +224,26 @@ n_attach_function()
     echo ${n_attach_vector[@]}
     # Cambiar los nombres de programa por su proceso más reciente
     for ((i = 1; i < ${#n_attach_vector[@]}; i++)); do
+
+        # Si la opcion es vacia saltar iteración
+        if [ -z "${n_attach_vector[i]}" ]; then
+            continue
+        fi
         program_name="${n_attach_vector[i]}"
         pid=$(pgrep -u ${USER} -n ${program_name})   # -u: usuario 
                                                         # -n: FLAG + reciente
 
-        # Crear directorio con el nombre del programa -nattch
-        if [ -n "${n_attach_vector[i]}" ]; then
-            if [[ ! -e "${HOME}/.scdebug/${n_attach_vector[i]}" ]]; then
-                mkdir ${HOME}/.scdebug/${n_attach_vector[i]}
-            fi
-        fi
-
         echo "$pid"
+        n_attach_vector[i]=$pid
         if [ -n "$pid" ]; then
-            n_attach_vector[i]=$pid
+            # Crear directorio con el nombre del programa -nattch
+            if [[ ! -e "${HOME}/.scdebug/$program_name" ]]; then
+                mkdir ${HOME}/.scdebug/$program_name
+            fi
+
             local_file_name="trace_$(uuidgen).txt"
             route=${HOME}/.scdebug/$program_name/${local_file_name}
-            sudo strace -p $pid -o $route &
-        # else
-        #     n_attach_vector[i]=""       # Valor vacio si el programa no está en ejecución
+            strace -p $pid -o $route &
         fi
     done
 
