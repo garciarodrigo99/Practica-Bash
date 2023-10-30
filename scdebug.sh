@@ -3,7 +3,7 @@
 # Grupo: PE203
 # Asignatura: Sistemas Operativos (2º curso)
 # Grado: Ingenieria Informatica
-# Fecha: 16-10-2023
+# Fecha: 30-10-2023
 # Autor: Rodrigo García Jiménez
 # Correo de contacto: alu0101154473@ull.edu.es
 
@@ -35,6 +35,7 @@ PROGRAM_OPTIONS=("-h" "-k" "-v" "-sto" "-vall" "-nattch" "-pattch")
 
 ## VARIABLES
 sto_option=
+kill_option=
 v_option=()
 n_attach_vector=()
 p_attach_vector=()
@@ -106,6 +107,28 @@ is_option()
 
 #### Funciones para modularizar el programa
 
+createFolders()
+{
+    # Crear directorio .scdebug
+    if [[ ! -e "${HOME}/.scdebug" ]]; then
+    mkdir "${HOME}/.scdebug"
+    fi
+
+    # Crear directorio con el nombre del programa
+    if [ -n "${prog[0]}" ]; then
+        if [[ ! -e "${HOME}/.scdebug/${prog[0]}" ]]; then
+            mkdir ${HOME}/.scdebug/${prog[0]}
+        fi
+    fi
+
+    # Crear directorio con el nombre del programa -pattch
+    if [ -n "${p_attach_vector[0]}" ]; then
+        if [[ ! -e "${HOME}/.scdebug/${p_attach_vector[0]}" ]]; then
+            mkdir ${HOME}/.scdebug/${p_attach_vector[0]}
+        fi
+    fi
+}
+
 # Funcion para ejecutar la opción -v(all)
 consult ()
 {
@@ -153,67 +176,6 @@ consult ()
     exit 0
 }
 
-# Cambia el nombre de los programas por su proceso más reciente
-fill_n_attach() 
-{
-    for ((i = 1; i < ${#n_attach_vector[@]}; i++)); do
-        nombre_programa="${n_attach_vector[i]}"
-        pid=$(pgrep -u ${USER} -n ${nombre_programa})    # -u: usuario 
-                                                    # -n: FLAG + reciente
-
-        if [ -n "$pid" ]; then
-            n_attach_vector[i]=$pid
-        else
-            n_attach_vector[i]=""       # Valor vacio si el programa no está en ejecución
-        fi
-    done
-
-    # No es necesario devolver el vector actualizado ya que n_attach_vector es una variable global
-    echo "Procesos N más recientes: ${n_attach_vector[*]}"
-}
-
-# Cambia el numero de proceso por el nombre de su comando
-fill_p_attch()
-{
-
-    for ((i = 1; i < ${#p_attach_vector[@]}; i++)); do
-        numero_programa="${p_attach_vector[i]}"
-        # ps -p 14574 -o comm=
-        pid=$(ps -p ${numero_programa} -o comm=)
-
-        if [ -n "$pid" ]; then
-            p_attach_vector[i]=$pid
-        else
-            p_attach_vector[i]=""       # Valor predeterminado si el programa no está en ejecución
-        fi
-    done
-
-    # No es necesario devolver el vector actualizado ya que n_attach_vector es una variable global
-    echo "Procesos P más recientes: ${p_attach_vector[*]}"
-}
-
-createFolders()
-{
-    # Crear directorio .scdebug
-    if [[ ! -e "${HOME}/.scdebug" ]]; then
-    mkdir "${HOME}/.scdebug"
-    fi
-
-    # Crear directorio con el nombre del programa
-    if [ -n "${prog[0]}" ]; then
-        if [[ ! -e "${HOME}/.scdebug/${prog[0]}" ]]; then
-            mkdir ${HOME}/.scdebug/${prog[0]}
-        fi
-    fi
-
-    # Crear directorio con el nombre del programa -pattch
-    if [ -n "${p_attach_vector[0]}" ]; then
-        if [[ ! -e "${HOME}/.scdebug/${p_attach_vector[0]}" ]]; then
-            mkdir ${HOME}/.scdebug/${p_attach_vector[0]}
-        fi
-    fi
-}
-
 n_attach_function()
 {
     echo "Funcion n_attach_function"
@@ -230,21 +192,24 @@ n_attach_function()
             continue
         fi
         program_name="${n_attach_vector[i]}"
+        # ? : Quitar el user
         pid=$(pgrep -u ${USER} -n ${program_name})   # -u: usuario 
                                                         # -n: FLAG + reciente
 
         echo "$pid"
         n_attach_vector[i]=$pid
-        if [ -n "$pid" ]; then
-            # Crear directorio con el nombre del programa -nattch
-            if [[ ! -e "${HOME}/.scdebug/$program_name" ]]; then
-                mkdir ${HOME}/.scdebug/$program_name
-            fi
-
-            local_file_name="trace_$(uuidgen).txt"
-            route=${HOME}/.scdebug/$program_name/${local_file_name}
-            strace -p $pid -o $route &
+        # Si el pid es vacio, saltar de iteracion
+        if [ -z "$pid" ]; then
+            continue
         fi
+        # Crear directorio con el nombre del programa -nattch
+        if [[ ! -e "${HOME}/.scdebug/$program_name" ]]; then
+            mkdir ${HOME}/.scdebug/$program_name
+        fi
+
+        local_file_name="trace_$(uuidgen).txt"
+        route=${HOME}/.scdebug/$program_name/${local_file_name}
+        strace -p $pid -o $route &
     done
 
 }
@@ -252,10 +217,61 @@ n_attach_function()
 p_attach_function()
 {
     echo "Funcion p_attach_function"
+    # Si no está activa la opción salir de la funcion
     if [ "${p_attach_vector[0]}" == "" ]; then
         return 1
     fi
-    fill_p_attch
+    echo ${p_attach_vector[@]}
+    # Cambiar el pid por el nombre de su programa
+    for ((i = 1; i < ${#p_attach_vector[@]}; i++)); do
+
+        # Si la opcion es vacia saltar iteración
+        if [ -z "${p_attach_vector[i]}" ]; then
+            continue
+        fi
+        #program_name="${p_attach_vector[i]}"
+        #pid=$(pgrep -u ${USER} -n ${program_name})   # -u: usuario 
+                                                        # -n: FLAG + reciente
+        pid="${p_attach_vector[i]}"
+        program_name=$(ps -p $pid -o comm=)
+
+        echo "$pid"
+        echo $program_name
+        p_attach_vector[i]=$program_name
+        # Si el nombre de programa es vacio, saltar a la siguiente ejecucion
+        if [ -z "$pid" ]; then
+            continue
+        fi
+        # Crear directorio con el nombre del programa -pattch
+        if [[ ! -e "${HOME}/.scdebug/$program_name" ]]; then
+            mkdir ${HOME}/.scdebug/$program_name
+        fi
+
+        local_file_name="trace_$(uuidgen).txt"
+        route=${HOME}/.scdebug/$program_name/${local_file_name}
+        strace -p $pid -o $route &
+    done
+
+}
+
+kill_function()
+{
+    echo "Kill function"
+    # Obtener todos los procesos del usuario
+    user_process=()
+    output="ps -u${USER} -o pid= | tr -d ' ' "
+    while IFS= read -r pid; do
+        user_process+=("$pid")
+    done < <($output)
+
+    for pid in "${user_process[@]}"; do
+        # if [ "$elemento" == "$1" ]; then
+        #     return 0  # Retorna 0 para indicar éxito (cadena encontrada)
+        # fi
+        echo "$pid"
+        #echo ""$pid": $(cat /proc/"$pid"/status | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:space:]')"
+        
+    done
 
 }
 
@@ -327,6 +343,14 @@ while [ "$1" != "" ]; do
             # if [ "${p_attach_vector[1]}" == "" ]
             # ps -p 14574 -o comm=
             ;;
+        -k ) 
+            # ? : Opcion unica como -vall
+            echo "Opcion -k"
+            kill_option="$1"
+            shift
+            kill_function
+            exit 0
+            ;;
         -* )
             error_exit "$1 no es una opción válida de ${PROGNAME}" ${INVALID_OPTION}
             ;;
@@ -348,7 +372,7 @@ done
 # # Varios if para no anidar bucles
 
 createFolders
-n_attach_function
+p_attach_function
 exit 0
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
@@ -365,5 +389,3 @@ strace ${sto_option} ${n_attach_vector[@]} -o ${route} ${prog[@]}
 # ¿qué pasa?
 # 4. Si después de las opciones -(n | p)attch no se introduce ningún programa, ¿se lanza error o
 # simplemente no pasa o se dejan los errores a bash?
-
-#ps x --noheaders pid,comm
