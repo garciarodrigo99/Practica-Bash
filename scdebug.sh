@@ -156,7 +156,7 @@ consult ()
             if [ "${v_option[0]}" == "-v"  ]; then
                 break
             fi
-        done < <($output)
+        done < <($output|head)
 
         # Eliminar la primera posición del vector
         rows=("${rows[@]:1}")
@@ -259,19 +259,30 @@ kill_function()
     echo "Kill function"
     # Obtener todos los procesos del usuario
     user_process=()
-    output="ps -u${USER} -o pid= | tr -d ' ' "
-    while IFS= read -r pid; do
+    output=$(ps -u "${USER}" -o pid=)
+    while read -r pid; do
         user_process+=("$pid")
-    done < <($output)
+    done <<< "$output"
 
+    tracer=()
+    tracee=()
     for pid in "${user_process[@]}"; do
-        # if [ "$elemento" == "$1" ]; then
-        #     return 0  # Retorna 0 para indicar éxito (cadena encontrada)
-        # fi
-        echo "$pid"
-        #echo ""$pid": $(cat /proc/"$pid"/status | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:space:]')"
+        proc_folder="/proc/"$pid""
+        if [[ ! -d "${proc_folder}" ]];then 
+            continue
+        fi
+        command=$(cat "${proc_folder}/status" | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:space:]')
+        # Si el proceso es trazado
+        if [ "$command" != 0 ]; then
+            tracer+=("$command")
+            tracee+=("$pid")
+            echo ""$pid": "$command""
+        fi
         
     done
+
+    echo "Vector tracer: ${tracer[@]}"
+    echo "Vector tracee: ${tracee[@]}"
 
 }
 
