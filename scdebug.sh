@@ -129,6 +129,30 @@ createFolders()
     fi
 }
 
+show_user_processes() 
+{
+    echo "Showing user processes"
+    output=$(ps -u "${USER}" --sort=-start_time)
+    while read -r pid; do
+        user_process+=("$pid")
+    done <<< "$output"
+
+    printf "%-*s" 7 "PID"
+    printf "%-*s" 11 "COMMAND"
+    printf "%-*s" 14 "START_TIME"
+    printf "%-*s" 14 "TRAZER_PID"
+    printf "%s\n" "COMMAND"
+
+    # Ejemplo 
+    # printf "%-*s" 7 "12345"
+    # printf "%-*s" 11 "brave"
+    # printf "%-*s" 14 "21:53"
+    # printf "%-*s" 14 "54321"
+    # printf "%s\n" "scdebug"
+    # -------------------------------------------------------------------------
+    
+}
+
 # Funcion para ejecutar la opción -v(all)
 consult ()
 {
@@ -385,8 +409,9 @@ done
 
 # # Varios if para no anidar bucles
 
-createFolders
-p_attach_function
+# createFolders
+# p_attach_function
+show_user_processes
 exit 0
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
