@@ -156,7 +156,7 @@ consult ()
             if [ "${v_option[0]}" == "-v"  ]; then
                 break
             fi
-        done < <($output|head)
+        done < <($output)
 
         # Eliminar la primera posición del vector
         rows=("${rows[@]:1}")
@@ -165,9 +165,11 @@ consult ()
         for linea in "${rows[@]}"; do
             local_file_name=$(echo "$linea" | cut -d' ' -f8)
             file_time=$(echo "$linea" | cut -d' ' -f6,7)
-            echo "=============== COMMAND: "$command" ======================="
-            echo "=============== TRACE FILE: "$local_file_name" ================="
-            echo "=============== TIME: "$file_time" =============="
+            fixed_width=46
+            printf "=============== COMMAND:    %-*s =======================\n" $fixed_width "$command"
+            printf "=============== TRACE FILE: %-*s =======================\n" $fixed_width "$local_file_name"
+            printf "=============== TIME:       %-*s =======================\n" $fixed_width "$file_time"
+            #trace_2e9f7881-9937-4bfa-abfe-dcf0ceb29bba.txt
             echo
         done
 
@@ -209,6 +211,7 @@ n_attach_function()
 
         local_file_name="trace_$(uuidgen).txt"
         route=${HOME}/.scdebug/$program_name/${local_file_name}
+        # ! : Añadir sto 
         strace -p $pid -o $route &
     done
 
