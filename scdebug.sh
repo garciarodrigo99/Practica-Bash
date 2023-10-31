@@ -218,7 +218,7 @@ n_attach_function()
             continue
         fi
         program_name="${n_attach_vector[i]}"
-        # ? : Quitar el user
+
         pid=$(pgrep -u ${USER} -n ${program_name})   # -u: usuario 
                                                         # -n: FLAG + reciente
 
@@ -311,6 +311,12 @@ kill_function()
     echo "Vector tracer: ${tracer[@]}"
     echo "Vector tracee: ${tracee[@]}"
 
+    # Si no están vacíos los vectores, llamar a kill
+    if [ -n "${tracer[0]}" ]; then
+        kill "${tracer[@]}"
+        kill "${tracee[@]}"
+    fi
+
 }
 
 # -----------------------------------------------------------------------------
@@ -382,7 +388,7 @@ while [ "$1" != "" ]; do
             # ps -p 14574 -o comm=
             ;;
         -k ) 
-            # ? : Opcion unica como -vall
+            # !! No es opción única
             echo "Opcion -k"
             kill_option="$1"
             shift
@@ -411,7 +417,7 @@ done
 
 # createFolders
 # p_attach_function
-show_user_processes
+kill_function
 exit 0
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
