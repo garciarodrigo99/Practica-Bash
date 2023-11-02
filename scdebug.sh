@@ -107,28 +107,6 @@ is_option()
 
 #### Funciones para modularizar el programa
 
-createFolders()
-{
-    # Crear directorio .scdebug
-    if [[ ! -e "${HOME}/.scdebug" ]]; then
-    mkdir "${HOME}/.scdebug"
-    fi
-
-    # Crear directorio con el nombre del programa
-    if [ -n "${prog[0]}" ]; then
-        if [[ ! -e "${HOME}/.scdebug/${prog[0]}" ]]; then
-            mkdir ${HOME}/.scdebug/${prog[0]}
-        fi
-    fi
-
-    # Crear directorio con el nombre del programa -pattch
-    if [ -n "${p_attach_vector[0]}" ]; then
-        if [[ ! -e "${HOME}/.scdebug/${p_attach_vector[0]}" ]]; then
-            mkdir ${HOME}/.scdebug/${p_attach_vector[0]}
-        fi
-    fi
-}
-
 show_user_processes() 
 {
     echo "Showing user processes"
@@ -186,7 +164,6 @@ show_user_processes()
 # Funcion para ejecutar la opción -v(all)
 consult ()
 {
-
     for ((i = 1; i < ${#v_option[@]}; i++)); do
         # Si es la primera posicion del vector es vacia salto a la siguiente iteración
         if [ -z "${v_option[i]}" ]; then
@@ -232,88 +209,13 @@ consult ()
     exit 0
 }
 
-n_attach_function()
-{
-    echo "Funcion n_attach_function"
-    # Si no está activa la opción salir de la funcion
-    if [ "${n_attach_vector[0]}" == "" ]; then
-        return 1
-    fi
-    echo ${n_attach_vector[@]}
-    # Cambiar los nombres de programa por su proceso más reciente
-    for ((i = 1; i < ${#n_attach_vector[@]}; i++)); do
-
-        # Si la opcion es vacia saltar iteración
-        if [ -z "${n_attach_vector[i]}" ]; then
-            continue
-        fi
-        program_name="${n_attach_vector[i]}"
-
-        pid=$(pgrep -u ${USER} -n ${program_name})   # -u: usuario 
-                                                        # -n: FLAG + reciente
-
-        echo "$pid"
-        n_attach_vector[i]=$pid
-        # Si el pid es vacio, saltar de iteracion
-        if [ -z "$pid" ]; then
-            continue
-        fi
-        # Crear directorio con el nombre del programa -nattch
-        if [[ ! -e "${HOME}/.scdebug/$program_name" ]]; then
-            mkdir ${HOME}/.scdebug/$program_name
-        fi
-
-        local_file_name="trace_$(uuidgen).txt"
-        route=${HOME}/.scdebug/$program_name/${local_file_name}
-        # ! : Añadir sto 
-        strace -p $pid -o $route &
-    done
-
-}
-
-p_attach_function()
-{
-    echo "Funcion p_attach_function"
-    # Si no está activa la opción salir de la funcion
-    if [ "${p_attach_vector[0]}" == "" ]; then
-        return 1
-    fi
-    echo ${p_attach_vector[@]}
-    # Cambiar el pid por el nombre de su programa
-    for ((i = 1; i < ${#p_attach_vector[@]}; i++)); do
-
-        # Si la opcion es vacia saltar iteración
-        if [ -z "${p_attach_vector[i]}" ]; then
-            continue
-        fi
-        #program_name="${p_attach_vector[i]}"
-        #pid=$(pgrep -u ${USER} -n ${program_name})   # -u: usuario 
-                                                        # -n: FLAG + reciente
-        pid="${p_attach_vector[i]}"
-        program_name=$(ps -p $pid -o comm=)
-
-        echo "$pid"
-        echo $program_name
-        p_attach_vector[i]=$program_name
-        # Si el nombre de programa es vacio, saltar a la siguiente ejecucion
-        if [ -z "$pid" ]; then
-            continue
-        fi
-        # Crear directorio con el nombre del programa -pattch
-        if [[ ! -e "${HOME}/.scdebug/$program_name" ]]; then
-            mkdir ${HOME}/.scdebug/$program_name
-        fi
-
-        local_file_name="trace_$(uuidgen).txt"
-        route=${HOME}/.scdebug/$program_name/${local_file_name}
-        strace -p $pid -o $route &
-    done
-
-}
-
 kill_function()
 {
     echo "Kill function"
+    # Si no está activa la opción, salir de la funcion
+    if [ -z "$kill_option" ]; then
+        return 1
+    fi
     # Obtener todos los procesos del usuario
     user_process=()
     output=$(ps -u "${USER}" -o pid=)
@@ -349,6 +251,81 @@ kill_function()
 
 }
 
+n_attach_function()
+{
+    echo "Funcion n_attach_function"
+    # Si no está activa la opción, salir de la funcion
+    if [ -z "${n_attach_vector[0]}" ]; then
+        return 1
+    fi
+    echo ${n_attach_vector[@]}
+
+    for ((i = 1; i < ${#n_attach_vector[@]}; i++)); do
+
+        # # Si la opcion es vacia saltar iteración
+        # if [ -z "${n_attach_vector[i]}" ]; then
+        #     continue
+        # fi
+
+        program_name="${n_attach_vector[i]}"
+        # Obtener el proceso más reciente de cierto programa
+        pid=$(pgrep -u ${USER} -n ${program_name})   # -u: usuario 
+                                                        # -n: FLAG + reciente
+
+        echo "$pid"
+        n_attach_vector[i]=$pid
+        # Si no existe el proceso, saltar a la siguiente ejecucion
+        if [ -z "$pid" ]; then
+            continue
+        fi
+        # Crear directorio con el nombre del programa -nattch
+        if [[ ! -e "${HOME}/.scdebug/$program_name" ]]; then
+            mkdir ${HOME}/.scdebug/$program_name
+        fi
+
+        local_file_name="trace_$(uuidgen).txt"
+        route=${HOME}/.scdebug/$program_name/${local_file_name}
+        # ! : Añadir sto 
+        strace ${sto_option} -o ${route} -p ${pid} &
+    done
+
+}
+
+p_attach_function()
+{
+    echo "Funcion p_attach_function"
+    # Si no está activa la opción, salir de la funcion
+    if [ -z "${p_attach_vector[0]}" ]; then
+        return 1
+    fi
+    echo ${p_attach_vector[@]}
+    # Cambiar el pid por el nombre de su programa
+    for ((i = 1; i < ${#p_attach_vector[@]}; i++)); do
+
+        # Si la opcion es vacia saltar iteración
+        if [ -z "${p_attach_vector[i]}" ]; then
+            continue
+        fi
+
+        pid="${p_attach_vector[i]}"
+        program_name=$(ps -p $pid -o comm=)
+
+        # Si no existe el proceso, saltar a la siguiente ejecucion
+        if [ -z "$pid" ]; then
+            continue
+        fi
+        # Crear directorio con el nombre del programa -pattch
+        if [[ ! -e "${HOME}/.scdebug/$program_name" ]]; then
+            mkdir ${HOME}/.scdebug/$program_name
+        fi
+
+        local_file_name="trace_$(uuidgen).txt"
+        route=${HOME}/.scdebug/$program_name/${local_file_name}
+        strace ${sto_option} -o ${route} -p ${pid} &
+    done
+
+}
+
 # -----------------------------------------------------------------------------
 
 ### Main
@@ -381,7 +358,7 @@ while [ "$1" != "" ]; do
                 shift
             done
             consult
-            # No lanzar operaciones strace
+            # Aquí acaba el programa
             ;;
         -nattch )
             echo "Opcion -nattch"
@@ -415,15 +392,12 @@ while [ "$1" != "" ]; do
                 shift
             done
             # if [ "${p_attach_vector[1]}" == "" ]
-            # ps -p 14574 -o comm=
             ;;
-        -k ) 
-            # !! No es opción única
+        -k )
             echo "Opcion -k"
             kill_option="$1"
             shift
             kill_function
-            exit 0
             ;;
         -* )
             error_exit "$1 no es una opción válida de ${PROGNAME}" ${INVALID_OPTION}
@@ -443,23 +417,21 @@ while [ "$1" != "" ]; do
     esac
 done   
 
-# # Varios if para no anidar bucles
 
-# createFolders
-# p_attach_function
+# Crear directorio .scdebug en cualquier caso si no existiera
+if [[ ! -e "${HOME}/.scdebug" ]]; then
+    mkdir "${HOME}/.scdebug"
+fi
+
 show_user_processes
-exit 0
+kill_function
+n_attach_function
+p_attach_function
+
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
 
-aux="${sto_option} ${n_attach_vector[@]} -o ${route} ${prog[@]} : ejecutado"
-echo $aux
-strace ${sto_option} ${n_attach_vector[@]} -o ${route} ${prog[@]}
-
 # Preguntar(¿?)
-# 1. ¿Con la opcion prog solo se puede ejecutar un programa con sus respectivos argumentos
-#    o son varios programas?
-# 2. ¿Con la opción -nattch serían válidos los argumentos ls -la, o es solo el nombre del programa?
 # 3. Si con las opciones -(n | p)attch se introducen programas que no tienen procesos en ejecución,
 # ¿qué pasa?
 # 4. Si después de las opciones -(n | p)attch no se introduce ningún programa, ¿se lanza error o
