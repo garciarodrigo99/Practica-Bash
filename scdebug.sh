@@ -233,7 +233,7 @@ kill_function()
         if [[ ! -d "${proc_folder}" ]];then 
             continue
         fi
-        tracer_pid=$(cat "${proc_folder}/status" | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:space:]')  # Cambiar por blank?
+        tracer_pid=$(cat "${proc_folder}/status" | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:blank:]')  # Cambiar por blank?
         # Si el proceso es trazado
         if [ "$tracer_pid" != 0 ]; then
             tracer+=("$tracer_pid")
