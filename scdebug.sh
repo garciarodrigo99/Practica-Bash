@@ -132,24 +132,54 @@ createFolders()
 show_user_processes() 
 {
     echo "Showing user processes"
-    output=$(ps -u "${USER}" --sort=-start_time)
+    # Recogida de procesos en el vector user_process_aux
+    output=$(ps -u "${USER}" -o pid= --sort=-start_time)
     while read -r pid; do
-        user_process+=("$pid")
+        user_process_aux+=("$pid")
     done <<< "$output"
 
-    printf "%-*s" 7 "PID"
-    printf "%-*s" 11 "COMMAND"
+    printf "%-*s" 9 "PID"
+    printf "%-*s" 19 "COMMAND"
     printf "%-*s" 14 "START_TIME"
     printf "%-*s" 14 "TRAZER_PID"
     printf "%s\n" "COMMAND"
 
-    # Ejemplo 
-    # printf "%-*s" 7 "12345"
-    # printf "%-*s" 11 "brave"
-    # printf "%-*s" 14 "21:53"
-    # printf "%-*s" 14 "54321"
-    # printf "%s\n" "scdebug"
-    # -------------------------------------------------------------------------
+    #echo ${user_process_aux[@]}
+
+    # Se imprimen traceados y los no traceados se guardan en un vector
+    pid_no_traced=()    # Vector de pids de procesos no traceados
+    for pid in "${user_process_aux[@]}"; do
+        proc_folder="/proc/"$pid""
+        if [[ ! -d "${proc_folder}" ]];then 
+            continue
+        fi
+        # PID del proceso trazador
+        tracer_pid=$(cat "${proc_folder}/status" | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:space:]')
+        # Si el proceso es trazado, se imprime por pantalla 
+        if [ "$tracer_pid" != 0 ]; then
+            process_name=$(ps -p $pid -o comm=) # Nombre del proceso
+            process_time=$(ps -p $pid -o start=)
+            tracer_name=$(ps -p $tracer_pid -o comm=)   # Nombre del proceso trazador
+            # Ejemplo 
+            printf "%-*s" 9 "$pid"
+            printf "%-*s" 19 "$process_name"
+            printf "%-*s" 14 "$process_time"
+            printf "%-*s" 14 "$tracer_pid"
+            printf "%s\n" "$tracer_name"
+        # Si no es trazado, se guarda en un vector que se imprimirá más tarde
+        else 
+            pid_no_traced+=("$pid")
+        fi
+    done
+
+    # Imprimir los procesos no trazados
+    for pid in "${pid_no_traced[@]}"; do
+        process_name=$(ps -p $pid -o comm=) # Nombre del proceso
+        process_time=$(ps -p $pid -o start=)
+        printf "%-*s" 9 "$pid"
+        printf "%-*s" 19 "$process_name"
+        printf "%s\n" "$process_time"
+    done
     
 }
 
@@ -298,12 +328,12 @@ kill_function()
         if [[ ! -d "${proc_folder}" ]];then 
             continue
         fi
-        command=$(cat "${proc_folder}/status" | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:space:]')
+        tracer_pid=$(cat "${proc_folder}/status" | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:space:]')
         # Si el proceso es trazado
-        if [ "$command" != 0 ]; then
-            tracer+=("$command")
+        if [ "$tracer_pid" != 0 ]; then
+            tracer+=("$tracer_pid")
             tracee+=("$pid")
-            echo ""$pid": "$command""
+            echo ""$pid": "$tracer_pid""
         fi
         
     done
@@ -417,7 +447,7 @@ done
 
 # createFolders
 # p_attach_function
-kill_function
+show_user_processes
 exit 0
 filename="trace_$(uuidgen).txt"
 route=${HOME}/.scdebug/${prog[0]}/${filename}
