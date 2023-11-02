@@ -39,7 +39,7 @@ kill_option=
 v_option=()
 n_attach_vector=()
 p_attach_vector=()
-prog=()
+prog_vector=()
 
 # -----------------------------------------------------------------------------
 ### PROGRAMA
@@ -109,7 +109,7 @@ is_option()
 
 show_user_processes() 
 {
-    echo "Showing user processes"
+    #echo "Showing user processes"
     # Recogida de procesos en el vector user_process_aux
     output=$(ps -u "${USER}" -o pid= --sort=-start_time)
     while read -r pid; do
@@ -211,7 +211,7 @@ consult ()
 
 kill_function()
 {
-    echo "Kill function"
+    #echo "Kill function"
     # Si no está activa la opción, salir de la funcion
     if [ -z "$kill_option" ]; then
         return 1
@@ -240,8 +240,8 @@ kill_function()
         
     done
 
-    echo "Vector tracer: ${tracer[@]}"
-    echo "Vector tracee: ${tracee[@]}"
+    # echo "Vector tracer: ${tracer[@]}"
+    # echo "Vector tracee: ${tracee[@]}"
 
     # Si no están vacíos los vectores, llamar a kill
     if [ -n "${tracer[0]}" ]; then
@@ -249,6 +249,18 @@ kill_function()
         kill "${tracee[@]}"
     fi
 
+}
+
+prog_function()
+{
+    echo "Funcion prog"
+    # Si no está activa la opción, salir de la funcion
+    if [ -z "${prog_vector[0]}" ]; then
+        return 1
+    fi
+    filename="trace_$(uuidgen).txt"
+    route=${HOME}/.scdebug/${prog_vector[0]}/${filename}
+    strace ${sto_option} -o ${route} ${prog_vector} &
 }
 
 n_attach_function()
@@ -394,10 +406,9 @@ while [ "$1" != "" ]; do
             # if [ "${p_attach_vector[1]}" == "" ]
             ;;
         -k )
-            echo "Opcion -k"
+            #echo "Opcion -k"
             kill_option="$1"
             shift
-            kill_function
             ;;
         -* )
             error_exit "$1 no es una opción válida de ${PROGNAME}" ${INVALID_OPTION}
@@ -410,7 +421,7 @@ while [ "$1" != "" ]; do
                 if [ "$?" == "0" ];then
                     break
                 fi
-                prog+=("$1")
+                prog_vector+=("$1")
                 shift
             done
             ;;
@@ -425,11 +436,9 @@ fi
 
 show_user_processes
 kill_function
+prog_function
 n_attach_function
 p_attach_function
-
-filename="trace_$(uuidgen).txt"
-route=${HOME}/.scdebug/${prog[0]}/${filename}
 
 # Preguntar(¿?)
 # 3. Si con las opciones -(n | p)attch se introducen programas que no tienen procesos en ejecución,
