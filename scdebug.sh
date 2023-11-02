@@ -181,7 +181,13 @@ consult ()
 
         # Volcar las filas de la salida por pantalla al vector rows
         rows=()
+        count=0
         while IFS= read -r linea; do
+            # Salta primera linea(total n)
+            if [ "$count" -eq 0  ]; then
+                ((count++))
+                continue
+            fi
             rows+=("$linea")
             # Verificar si option es igual a -v y salir después de la primera línea
             if [ "${v_option[0]}" == "-v"  ]; then
@@ -189,13 +195,10 @@ consult ()
             fi
         done < <($output)
 
-        # Eliminar la primera posición del vector
-        rows=("${rows[@]:1}")
-
         # Recorrer vector el vector de filas
         for linea in "${rows[@]}"; do
-            local_file_name=$(echo "$linea" | cut -d' ' -f8)
-            file_time=$(echo "$linea" | cut -d' ' -f6,7)
+            local_file_name=$(echo "$linea" | tr -s [:blank:] ';' | cut -d';' -f8)
+            file_time=$(echo "$linea" | tr -s [:blank:] ';' | cut -d';' -f6,7 | tr ';' ' ')
             fixed_width=46
             printf "=============== COMMAND:    %-*s =======================\n" $fixed_width "$command"
             printf "=============== TRACE FILE: %-*s =======================\n" $fixed_width "$local_file_name"
@@ -230,7 +233,7 @@ kill_function()
         if [[ ! -d "${proc_folder}" ]];then 
             continue
         fi
-        tracer_pid=$(cat "${proc_folder}/status" | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:space:]')
+        tracer_pid=$(cat "${proc_folder}/status" | grep "TracerPid" | cut -d ':' -f 2 | tr -d '[:space:]')  # Cambiar por blank?
         # Si el proceso es trazado
         if [ "$tracer_pid" != 0 ]; then
             tracer+=("$tracer_pid")
@@ -258,8 +261,14 @@ prog_function()
     if [ -z "${prog_vector[0]}" ]; then
         return 1
     fi
+    if [[ ! -e "${HOME}/.scdebug/${prog_vector[0]}" ]]; then
+        mkdir ${HOME}/.scdebug/${prog_vector[0]}
+    fi
+    # Evitar problemas con ejecutables del usuario y sus rutas a la hora de 
+    # crear el directorio del programa
+    foldername=$(basename "${prog_vector[0]}")
     filename="trace_$(uuidgen).txt"
-    route=${HOME}/.scdebug/${prog_vector[0]}/${filename}
+    route=${HOME}/.scdebug/${foldername}/${filename}
     strace ${sto_option} -o ${route} ${prog_vector} &
 }
 
