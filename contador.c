@@ -6,7 +6,7 @@ int main() {
     int segundos = 0;
 
     while (1) {
-        //printf("Segundos transcurridos: %d\n", segundos);
+        printf("Segundos transcurridos: %d\n", segundos);
         segundos++;
         sleep(1); // Espera 1 segundo
     }

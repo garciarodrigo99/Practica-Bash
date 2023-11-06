@@ -269,16 +269,17 @@ prog_function()
     foldername=$(basename "${prog_vector[0]}")
     filename="trace_$(uuidgen).txt"
     route=${HOME}/.scdebug/${foldername}/${filename}
-    strace ${sto_option} -o ${route} ${prog_vector} &
+    strace ${sto_option} -o ${route} ${prog_vector} > /dev/null 2>&1 &
 }
 
 n_attach_function()
 {
-    echo "Funcion n_attach_function"
     # Si no está activa la opción, salir de la funcion
     if [ -z "${n_attach_vector[0]}" ]; then
         return 1
     fi
+
+    echo "Funcion n_attach_function"
     echo ${n_attach_vector[@]}
 
     for ((i = 1; i < ${#n_attach_vector[@]}; i++)); do
@@ -307,18 +308,19 @@ n_attach_function()
         local_file_name="trace_$(uuidgen).txt"
         route=${HOME}/.scdebug/$program_name/${local_file_name}
         # ! : Añadir sto 
-        strace ${sto_option} -o ${route} -p ${pid} &
+        strace ${sto_option} -o ${route} -p ${pid} > /dev/null 2>&1 &
     done
 
 }
 
 p_attach_function()
 {
-    echo "Funcion p_attach_function"
     # Si no está activa la opción, salir de la funcion
     if [ -z "${p_attach_vector[0]}" ]; then
         return 1
     fi
+
+    echo "Funcion p_attach_function"
     echo ${p_attach_vector[@]}
     # Cambiar el pid por el nombre de su programa
     for ((i = 1; i < ${#p_attach_vector[@]}; i++)); do
@@ -342,9 +344,35 @@ p_attach_function()
 
         local_file_name="trace_$(uuidgen).txt"
         route=${HOME}/.scdebug/$program_name/${local_file_name}
-        strace ${sto_option} -o ${route} -p ${pid} &
+        strace ${sto_option} -o ${route} -p ${pid} > /dev/null 2>&1 &
     done
 
+}
+
+print_traces()
+{
+    output=$(ls -lt ${HOME}/.scdebug/ --format=single-colum)
+    folders=()
+    while read -r pid; do
+        folders+=("$pid")
+    done <<< "$output"
+
+    fixed_width=2
+    printf "DIR:    %-*s" $fixed_width "$command"
+    printf "NUM: %-*s" $fixed_width "$local_file_name"
+    printf "FICHERO_MAS_RECIENTE: %-*s \n" $fixed_width "$file_time"
+
+    # Recorrer vector el vector de directorios
+    for dir in "${folders[@]}"; do
+        files_number=$(ls -lt ${HOME}/.scdebug/${dir}/ --format=single-colum | wc -l)
+        fixed_width=10
+        file_time=$(ls -lt ${HOME}/.scdebug/${dir}/ | tr -s [:blank:] ';' | cut -d';' -f6,7,8,9 | tr ';' ' ' | head -n2 | tail -n1)
+        printf "%-*s" $fixed_width "$dir"
+        printf "%-*s" 7 "$files_number"
+        printf "%s \n" "$file_time"
+        #trace_2e9f7881-9937-4bfa-abfe-dcf0ceb29bba.txt
+        echo
+    done
 }
 
 # -----------------------------------------------------------------------------
@@ -364,6 +392,7 @@ while [ "$1" != "" ]; do
             echo "Opcion -sto"
             shift
             sto_option=$1
+            shift   # fallo arreglado
             ;;
 
         -v | -vall )
@@ -443,8 +472,12 @@ if [[ ! -e "${HOME}/.scdebug" ]]; then
     mkdir "${HOME}/.scdebug"
 fi
 
-show_user_processes
 kill_function
+show_user_processes
+print_traces
+# echo "Vector prog: "${prog_vector[@]}""
+# echo
+echo ""$sto_option""
 prog_function
 n_attach_function
 p_attach_function
