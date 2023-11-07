@@ -393,6 +393,18 @@ stop_function()
     exec $Launchprog
 }
 
+resume_option()
+{
+    echo "Resume option"
+    stopped_pid=()
+    output=$(ps -u ${USER} -o pid,state | grep T | tr -s ' ' |  cut -d' ' -f2)
+    while read -r pid; do
+        stopped_pid+=("$pid")
+    done <<< "$output"
+    echo "${stopped_pid[@]}"
+
+}
+
 # -----------------------------------------------------------------------------
 
 ### Main
@@ -505,8 +517,8 @@ fi
 # kill_function
 # show_user_processes
 # print_traces
-
-echo "Id script: "$$""
+resume_option
+exit 0
 
 if [ -z "$stop_vector" ];then
     prog_function
