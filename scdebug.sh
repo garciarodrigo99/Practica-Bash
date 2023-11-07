@@ -385,6 +385,12 @@ stop_function()
         Launchprog+="$word "
     done
     echo "$Launchprog"
+    echo "$commName"
+
+    echo -n "traced_"$commName"" > /proc/$$/comm
+    kill -SIGSTOP $$
+
+    exec $Launchprog
 }
 
 # -----------------------------------------------------------------------------
@@ -500,10 +506,7 @@ fi
 # show_user_processes
 # print_traces
 
-echo "Stopvector: "${stop_vector[@]}""
-echo "Progvector: "${prog_vector[@]}""
-echo "NAttachVector: "${n_attach_vector[@]}""
-echo "PAttachVector: "${p_attach_vector[@]}""
+echo "Id script: "$$""
 
 if [ -z "$stop_vector" ];then
     prog_function
