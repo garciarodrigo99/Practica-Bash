@@ -1,4 +1,4 @@
-#!/bin/bash
+#!./ptbash
 
 # Grupo: PE203
 # Asignatura: Sistemas Operativos (2º curso)
@@ -12,6 +12,8 @@
 # exit 1: Caso general
 # exit 2: Prog no es un programa válido
 # exit 3: Los argumentos de prog no son válidos
+# exit 3: Los argumentos de prog no son válidos
+# exit 5: Hay opciones incompatibles
 
 ## Estilos
 
@@ -29,9 +31,10 @@ PROGNAME=$0					# Antes de nada guardo el argumento 0 en una constante
 INVALID_OPTION=2            # Argumento a PROGNAME no válido
 INVALID_PROGRAM=3           # El programa no existe
 INVALID_PROGRAM_OPTION=4    # Las opciones del programa a seguir no son válidas
+INCOMPATIBLE_OPTIONS=5      # Opciones incompatibles
 
 ### OPCIONES 
-PROGRAM_OPTIONS=("-h" "-k" "-v" "-sto" "-vall" "-nattch" "-pattch")
+PROGRAM_OPTIONS=("-h" "-k" "-S" "-v" "-sto" "-vall" "-nattch" "-pattch")
 
 ## VARIABLES
 sto_option=
@@ -40,6 +43,7 @@ v_option=()
 n_attach_vector=()
 p_attach_vector=()
 prog_vector=()
+stop_vector=()
 
 # -----------------------------------------------------------------------------
 ### PROGRAMA
@@ -58,24 +62,24 @@ help()
 
 cat << _EOF_
 
-${TEXT_ULINE}Modo de uso${TEXT_RESET}: $0 [-sto arg]  [-v | -vall] [-nattch progtoattach] prog [arg1...]
+${TEXT_ULINE}Modo de uso${TEXT_RESET}: $0 [-h] [-k] [[-sto arg] [(-v | -vall) prog1 ... ] [prog [arg …] ] [-nattch progtoattach …] [-pattch pid1 … ] | -S commName prog [arg...]]
 
 Las opciones referidas a ${PROGNAME} deberán ir antes de indicar el nombre del programa que se quiere analizar.
 En el caso de que indiquen después, se tomarán argumentos del programa a analizar.
 
 ${TEXT_BOLD}OPCIONES:${TEXT_RESET}
 
--sto        Añade opciones al comando strace. Los argumentos han 
-            de ir entre comillas simples 'arg1 arg2 ... argn'. En caso de que 
-            no sea así se tomará como opción del programa ${PROGNAME}.
--k          Opcion no implementada.
--v, -vall   Opcion no implementada.
+-k          Trata de terminar todos los procesos trazadores del
+            usuario, así como todos los procesos trazados.
 -nattch		Monitorizar otros procesos que ya están en ejecución. Se opta por 
             el proceso del usuario cuya ejecución se inició más recientemente 
             con ese comando.
 -pattch		Monitorizar otros procesos. Se pasan los números de los procesos.
-prog        Programa a evaluar. [arg1...] argumentos cuando se llama al programa.
-
+-sto        Añade opciones al comando strace. Los argumentos han 
+            de ir entre comillas simples 'arg1 arg2 ... argn'. En caso de que 
+            no sea así se tomará como opción del programa ${PROGNAME}.
+-v          Se volcará la información del archivo de depuración más reciente en la salida estándar.
+-vall       Se volcará la información de todos los archivos de depuración en la salida estándar.
 
 _EOF_
 
@@ -121,8 +125,6 @@ show_user_processes()
     printf "%-*s" 14 "START_TIME"
     printf "%-*s" 14 "TRAZER_PID"
     printf "%s\n" "COMMAND"
-
-    #echo ${user_process_aux[@]}
 
     # Se imprimen traceados y los no traceados se guardan en un vector
     pid_no_traced=()    # Vector de pids de procesos no traceados
@@ -375,6 +377,16 @@ print_traces()
     done
 }
 
+stop_function()
+{   
+    commName=${stop_vector[1]}
+    Launchprog=
+    for word in "${stop_vector[@]:1}"; do
+        Launchprog+="$word "
+    done
+    echo "$Launchprog"
+}
+
 # -----------------------------------------------------------------------------
 
 ### Main
@@ -448,6 +460,18 @@ while [ "$1" != "" ]; do
             kill_option="$1"
             shift
             ;;
+        -S )
+            shift
+            while [ "$1" != "" ]; do
+                is_option "$1"
+                if [ "$?" == "0" ];then
+                    break
+                fi
+                # Guardo el comando en forma de vector para quedarme con el nombre en la primero pos
+                stop_vector+=("$1")
+                shift
+            done
+            ;;
         -* )
             error_exit "$1 no es una opción válida de ${PROGNAME}" ${INVALID_OPTION}
             ;;
@@ -472,18 +496,26 @@ if [[ ! -e "${HOME}/.scdebug" ]]; then
     mkdir "${HOME}/.scdebug"
 fi
 
-kill_function
-show_user_processes
-print_traces
-# echo "Vector prog: "${prog_vector[@]}""
-# echo
-echo ""$sto_option""
-prog_function
-n_attach_function
-p_attach_function
+# kill_function
+# show_user_processes
+# print_traces
+
+echo "Stopvector: "${stop_vector[@]}""
+echo "Progvector: "${prog_vector[@]}""
+echo "NAttachVector: "${n_attach_vector[@]}""
+echo "PAttachVector: "${p_attach_vector[@]}""
+
+if [ -z "$stop_vector" ];then
+    prog_function
+    n_attach_function
+    p_attach_function
+# Ya sabemos stop_vector no es vacia
+# Ahora comprobar que todas las demás son vacias
+elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ];then
+    stop_function
+else
+    error_exit "Opciones incompatibles: '"${prog_vector[@]}" "${n_attach_vector[@]}" "${p_attach_vector[@]}"' y '"$stop_vector"'" $INCOMPATIBLE_OPTIONS
+fi
 
 # Preguntar(¿?)
-# 3. Si con las opciones -(n | p)attch se introducen programas que no tienen procesos en ejecución,
-# ¿qué pasa?
-# 4. Si después de las opciones -(n | p)attch no se introduce ningún programa, ¿se lanza error o
-# simplemente no pasa o se dejan los errores a bash?
+# Si he activado alguna otra opción con -s sale con error: opciones incompatibles
