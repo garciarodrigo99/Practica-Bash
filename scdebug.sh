@@ -403,6 +403,10 @@ resume_option()
     done <<< "$output"
     echo "${stopped_pid[@]}"
 
+    for pid in "${stopped_pid[@]}"; do
+        cat /proc/$pid/comm
+    done
+
 }
 
 # -----------------------------------------------------------------------------
