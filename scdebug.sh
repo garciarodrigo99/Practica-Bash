@@ -44,7 +44,8 @@ n_attach_vector=()
 p_attach_vector=()
 prog_vector=()
 stop_vector=()
-resume_vector=()
+resume_option=
+resume_inv=
 
 # -----------------------------------------------------------------------------
 ### PROGRAMA
@@ -404,14 +405,17 @@ resume_function()
     echo "${stopped_pid[@]}"
 
     for pid in "${stopped_pid[@]}"; do
-        foldername=$(cat /proc/$pid/comm)
+        stopped_comm=$(cat /proc/$pid/comm)
         filename="trace_$(uuidgen).txt"
-        route=${HOME}/.scdebug/$foldername/${filename}
+        route=${HOME}/.scdebug/$stopped_comm/${filename}
+        if [[ ! -e "${HOME}/.scdebug/$stopped_comm" ]]; then
+            mkdir ${HOME}/.scdebug/$stopped_comm
+        fi
         echo $route
-        # strace -o ${route} ${prog_vector} > /dev/null 2>&1 &
+        strace -o ${route} ${stopped_comm} > /dev/null 2>&1 &
         # strace ${sto_option} -o ${route} -p ${pid} > /dev/null 2>&1 &
-        # sleep 0.2
-        # kill -SIGCONT $pid
+        sleep 0.5
+        kill -SIGCONT $pid
 
     done
 
@@ -502,11 +506,11 @@ while [ "$1" != "" ]; do
             done
             ;;
         -g | -gc | -ge )
-            resume_vector+=("$1")
+            resume_option="$1"
             shift
             ;;
         -inv )
-            resume_vector+=("$1")
+            resume_option="$1"
             shift
             ;;
         -* )
@@ -536,21 +540,21 @@ fi
 # kill_function
 # show_user_processes
 # print_traces
-resume_function
-exit 0
+# resume_function
+# exit 0
 
-if [ -z "$stop_vector" ] && [ -z "$resume_vector" ];then
+if [ -z "$stop_vector" ] && [ -z "$resume_option" ];then
     prog_function
     n_attach_function
     p_attach_function
 # Ya sabemos stop_vector no es vacia
 # Ahora comprobar que todas las demás son vacias
-elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ] && [ -z "$resume_vector" ];then
+elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ] && [ -z "$resume_option" ];then
     stop_function
 elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ] && [ -z "$stop_vector" ];then
     resume_function
 else
-    error_exit "Opciones incompatibles: "${prog_vector[@]}" "${n_attach_vector[@]}" "${p_attach_vector[@]}" "${stop_vector[@]}" "${resume_vector[@]}" " $INCOMPATIBLE_OPTIONS
+    error_exit "Opciones incompatibles: "${prog_vector[@]}" "${n_attach_vector[@]}" "${p_attach_vector[@]}" "${stop_vector[@]}" "${resume_option}" " $INCOMPATIBLE_OPTIONS
 fi
 
 # Preguntar(¿?)
