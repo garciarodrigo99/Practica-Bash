@@ -34,7 +34,7 @@ INVALID_PROGRAM_OPTION=4    # Las opciones del programa a seguir no son válidas
 INCOMPATIBLE_OPTIONS=5      # Opciones incompatibles
 
 ### OPCIONES 
-PROGRAM_OPTIONS=("-h" "-k" "-S" "-v" "-sto" "-vall" "-nattch" "-pattch")
+PROGRAM_OPTIONS=("-g" "-h" "-k" "-S" "-v" "-gc" "-ge" "-inv" "-sto" "-vall" "-nattch" "-pattch")
 
 ## VARIABLES
 sto_option=
@@ -44,6 +44,7 @@ n_attach_vector=()
 p_attach_vector=()
 prog_vector=()
 stop_vector=()
+resume_vector=()
 
 # -----------------------------------------------------------------------------
 ### PROGRAMA
@@ -205,7 +206,6 @@ consult ()
             printf "=============== COMMAND:    %-*s =======================\n" $fixed_width "$command"
             printf "=============== TRACE FILE: %-*s =======================\n" $fixed_width "$local_file_name"
             printf "=============== TIME:       %-*s =======================\n" $fixed_width "$file_time"
-            #trace_2e9f7881-9937-4bfa-abfe-dcf0ceb29bba.txt
             echo
         done
 
@@ -393,7 +393,7 @@ stop_function()
     exec $Launchprog
 }
 
-resume_option()
+resume_function()
 {
     echo "Resume option"
     stopped_pid=()
@@ -404,7 +404,15 @@ resume_option()
     echo "${stopped_pid[@]}"
 
     for pid in "${stopped_pid[@]}"; do
-        cat /proc/$pid/comm
+        foldername=$(cat /proc/$pid/comm)
+        filename="trace_$(uuidgen).txt"
+        route=${HOME}/.scdebug/$foldername/${filename}
+        echo $route
+        # strace -o ${route} ${prog_vector} > /dev/null 2>&1 &
+        # strace ${sto_option} -o ${route} -p ${pid} > /dev/null 2>&1 &
+        # sleep 0.2
+        # kill -SIGCONT $pid
+
     done
 
 }
@@ -430,7 +438,6 @@ while [ "$1" != "" ]; do
             ;;
 
         -v | -vall )
-            echo "Opcion -v(all)"
             v_option[0]="$1"
             shift
             while [ "$1" != "" ]; do
@@ -494,6 +501,14 @@ while [ "$1" != "" ]; do
                 shift
             done
             ;;
+        -g | -gc | -ge )
+            resume_vector+=("$1")
+            shift
+            ;;
+        -inv )
+            resume_vector+=("$1")
+            shift
+            ;;
         -* )
             error_exit "$1 no es una opción válida de ${PROGNAME}" ${INVALID_OPTION}
             ;;
@@ -521,19 +536,21 @@ fi
 # kill_function
 # show_user_processes
 # print_traces
-resume_option
+resume_function
 exit 0
 
-if [ -z "$stop_vector" ];then
+if [ -z "$stop_vector" ] && [ -z "$resume_vector" ];then
     prog_function
     n_attach_function
     p_attach_function
 # Ya sabemos stop_vector no es vacia
 # Ahora comprobar que todas las demás son vacias
-elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ];then
+elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ] && [ -z "$resume_vector" ];then
     stop_function
+elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ] && [ -z "$stop_vector" ];then
+    resume_function
 else
-    error_exit "Opciones incompatibles: '"${prog_vector[@]}" "${n_attach_vector[@]}" "${p_attach_vector[@]}"' y '"$stop_vector"'" $INCOMPATIBLE_OPTIONS
+    error_exit "Opciones incompatibles: "${prog_vector[@]}" "${n_attach_vector[@]}" "${p_attach_vector[@]}" "${stop_vector[@]}" "${resume_vector[@]}" " $INCOMPATIBLE_OPTIONS
 fi
 
 # Preguntar(¿?)
