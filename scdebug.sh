@@ -391,7 +391,7 @@ stop_function()
     echo -n "traced_"$commName"" > /proc/$$/comm
     kill -SIGSTOP $$
 
-    exec $Launchprog
+    exec $Launchprog > /dev/null 2>&1 &
 }
 
 resume_function()
