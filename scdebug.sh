@@ -259,7 +259,6 @@ kill_function()
 
 prog_function()
 {
-    echo "Funcion prog"
     # Si no está activa la opción, salir de la funcion
     if [ -z "${prog_vector[0]}" ]; then
         return 1
@@ -537,25 +536,25 @@ if [[ ! -e "${HOME}/.scdebug" ]]; then
     mkdir "${HOME}/.scdebug"
 fi
 
-# kill_function
-# show_user_processes
+kill_function
+show_user_processes
 # print_traces
-# resume_function
-# exit 0
 
-if [ -z "$stop_vector" ] && [ -z "$resume_option" ];then
-    prog_function
-    n_attach_function
-    p_attach_function
-# Ya sabemos stop_vector no es vacia
-# Ahora comprobar que todas las demás son vacias
-elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ] && [ -z "$resume_option" ];then
-    stop_function
-elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ] && [ -z "$stop_vector" ];then
-    resume_function
-else
-    error_exit "Opciones incompatibles: "${prog_vector[@]}" "${n_attach_vector[@]}" "${p_attach_vector[@]}" "${stop_vector[@]}" "${resume_option}" " $INCOMPATIBLE_OPTIONS
+if [ "${prog_vector[0]}" ] || [ "${n_attach_vector[0]}" ] || [ "${p_attach_vector[0]}" ] || [ "$stop_vector"] || [ "$resume_option"] ;then 
+    if [ -z "$stop_vector" ] && [ -z "$resume_option" ];then
+        prog_function
+        n_attach_function
+        p_attach_function
+    # Ya sabemos stop_vector no es vacia
+    # Ahora comprobar que todas las demás son vacias
+    elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ] && [ -z "$resume_option" ];then
+        stop_function
+    elif [ -z "${prog_vector[0]}" ] && [ -z "${n_attach_vector[0]}" ] && [ -z "${p_attach_vector[0]}" ] && [ -z "$stop_vector" ];then
+        resume_function
+    else
+        error_exit "Opciones incompatibles: "${prog_vector[@]}" "${n_attach_vector[@]}" "${p_attach_vector[@]}" "${stop_vector[@]}" "${resume_option}" " $INCOMPATIBLE_OPTIONS
+    fi
+    echo "Opciones no vacias"
 fi
-
 # Preguntar(¿?)
 # Si he activado alguna otra opción con -s sale con error: opciones incompatibles
